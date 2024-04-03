@@ -1,6 +1,6 @@
 - 👋 Hi, I’m @rchassot
 - 👀 I’m interested in development
-- 🌱 I’m currently learning c#
+- 🌱 I’m currently learning Angular
 - 💞️ I work at Automation3000
 - 📫 romain.chassot@automation3000.ch
 
