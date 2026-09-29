@@ -8,6 +8,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     defaults:
       run:
         working-directory: test-internet
@@ -24,3 +26,12 @@ jobs:
         with:
           name: TestInternet
           path: test-internet/TestInternet.exe
+      - name: Publier dans les Releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete test-internet --cleanup-tag --yes || true
+          gh release create test-internet TestInternet.exe \
+            --target "$GITHUB_SHA" --latest \
+            --title "Test Internet" \
+            --notes "Téléchargez **TestInternet.exe** ci-dessous, puis double-cliquez dessus. Si Windows affiche « Windows a protégé votre ordinateur » : *Informations complémentaires* → *Exécuter quand même*. (Version compilée depuis ${GITHUB_REF_NAME} @ ${GITHUB_SHA::7}.)"

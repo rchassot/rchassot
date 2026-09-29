@@ -8,6 +8,8 @@ Petit utilitaire Windows qui surveille la connexion Internet en continu et **exp
 
 ## Pour l'utilisateur
 
+**Télécharger :** https://github.com/rchassot/rchassot/releases/latest/download/TestInternet.exe
+
 1. Double-cliquez sur **TestInternet.exe**.
    - Si Windows affiche « Windows a protégé votre ordinateur », cliquez sur **Informations complémentaires**, puis sur **Exécuter quand même**. Cet avertissement apparaît parce que le programme n'est pas signé.
 2. Une fenêtre noire s'ouvre, puis la page de résultats s'affiche dans le navigateur. **Ne fermez pas la fenêtre noire** : vous pouvez la réduire.
@@ -60,7 +62,7 @@ Options : `-demo` (simulation), `-no-browser`, `-out <dossier>` (emplacement du 
 
 La page est servie sur `http://127.0.0.1:47800`. Si on relance l'exe alors qu'il tourne déjà, il ouvre simplement la page existante.
 
-À chaque push, GitHub Actions compile l'exe (workflow `Test Internet`). Il se télécharge dans les *Artifacts* du run.
+À chaque push, GitHub Actions teste et compile l'exe (workflow `Test Internet`), puis le publie dans la release `test-internet` (remplacée à chaque fois).
 
 | Fichier | Rôle |
 |---|---|
