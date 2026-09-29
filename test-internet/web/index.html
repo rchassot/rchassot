@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Test Internet</title>
+<style>
+:root{
+  --bg:#f1f5f9;--card:#fff;--text:#0f172a;--muted:#64748b;--line:#e2e8f0;
+  --ok:#16a34a;--ok-bg:#dcfce7;--warn:#d97706;--warn-bg:#fef3c7;--down:#dc2626;--down-bg:#fee2e2;
+  --unknown:#7c3aed;--na:#cbd5e1;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 "Segoe UI",system-ui,-apple-system,sans-serif}
+main{max-width:960px;margin:0 auto;padding:24px 16px 48px}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+h1{font-size:22px;margin:0}
+h2{font-size:18px;margin:0 0 4px}
+.muted{color:var(--muted)}
+.live{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:14px}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--ok);animation:pulse 1.6s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(22,163,74,.5)}100%{box-shadow:0 0 0 10px rgba(22,163,74,0)}}
+.card{background:var(--card);border-radius:16px;padding:20px;box-shadow:0 1px 3px rgba(15,23,42,.08);margin-bottom:16px}
+.demo{background:#ede9fe;color:#5b21b6;border-radius:10px;padding:8px 14px;margin-bottom:16px;font-size:14px}
+
+/* État principal */
+.status{display:flex;gap:18px;align-items:flex-start;border-left:8px solid var(--ok)}
+.status .icon{font-size:52px;line-height:1}
+.status h2{font-size:24px;line-height:1.25;margin-bottom:6px}
+.status.l0{border-color:var(--ok)}.status.l1{border-color:var(--warn);background:#fffbeb}.status.l2{border-color:var(--down);background:#fef2f2}
+.advice{margin-top:10px;padding:10px 14px;background:rgba(15,23,42,.04);border-radius:10px}
+.detail{font-size:14px;color:var(--muted)}
+
+/* Chaîne ordinateur → box → Internet → sites */
+.chain{display:grid;grid-template-columns:auto 1fr auto 1fr auto 1fr auto;align-items:start;gap:0;margin-top:12px}
+.node{text-align:center;width:110px}
+.node .circle{width:72px;height:72px;margin:0 auto 6px;border-radius:50%;display:grid;place-items:center;font-size:34px;border:4px solid var(--na);background:#f8fafc;transition:.3s}
+.node .name{font-weight:600;font-size:15px}
+.node .state{font-size:13px;color:var(--muted)}
+.node.ok .circle{border-color:var(--ok);background:var(--ok-bg)}
+.node.warn .circle{border-color:var(--warn);background:var(--warn-bg)}
+.node.down .circle{border-color:var(--down);background:var(--down-bg)}
+.node.unknown .circle{opacity:.55}
+.link{padding-top:24px;text-align:center;min-width:0}
+.link .bar{height:8px;border-radius:4px;background:var(--na);position:relative;margin:0 6px;transition:.3s}
+.link.ok .bar{background:var(--ok)}
+.link.warn .bar{background:repeating-linear-gradient(90deg,var(--warn) 0 14px,transparent 14px 20px)}
+.link.down .bar,.link.unknown .bar{background:repeating-linear-gradient(90deg,var(--down) 0 10px,transparent 10px 22px)}
+.link.unknown .bar{background:repeating-linear-gradient(90deg,var(--unknown) 0 10px,transparent 10px 22px)}
+.link .cut{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:22px;display:none;background:var(--card);border-radius:50%;line-height:1;padding:2px}
+.link.down .cut,.link.unknown .cut{display:block}
+.link .lbl{font-size:13px;font-weight:600;margin-top:10px}
+.link .sub{font-size:12px;color:var(--muted)}
+.link.ok .lbl{color:var(--ok)}.link.warn .lbl{color:var(--warn)}.link.down .lbl{color:var(--down)}.link.unknown .lbl{color:var(--unknown)}.link.na .lbl{color:var(--muted)}
+
+/* Chiffres */
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.kpi{background:var(--card);border-radius:14px;padding:14px 16px;box-shadow:0 1px 3px rgba(15,23,42,.08)}
+.kpi .v{font-size:26px;font-weight:700;line-height:1.2}
+.kpi .k{font-size:14px;color:var(--muted)}
+.kpi .s{font-size:13px;color:var(--muted)}
+
+/* Frises de la dernière heure */
+.tl-row{display:grid;grid-template-columns:180px 1fr;gap:12px;align-items:center;margin-top:10px}
+.tl-row .lab{font-size:14px;font-weight:600}
+.tl{display:grid;grid-template-columns:repeat(60,1fr);gap:2px;height:26px}
+.tl i{border-radius:2px;background:#e2e8f0}
+.tl i.l0{background:var(--ok)}.tl i.l1{background:#f59e0b}.tl i.l2{background:var(--down)}.tl i.l3{background:var(--unknown)}
+.tl-axis{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin:4px 0 0 192px}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:13px;color:var(--muted);margin-top:12px}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-1px;margin-right:5px}
+
+/* Journal */
+.inc{display:flex;gap:14px;padding:14px 0;border-top:1px solid var(--line)}
+.inc:first-of-type{border-top:0}
+.inc .ico{font-size:26px;line-height:1.2}
+.inc .when{font-size:14px;color:var(--muted)}
+.inc .t{font-weight:600}
+.inc .x{font-size:14px;margin-top:2px}
+.inc .a{font-size:14px;margin-top:4px;color:#334155}
+.badge{display:inline-block;font-size:12px;font-weight:700;padding:1px 8px;border-radius:999px;margin-left:6px;vertical-align:1px}
+.badge.on{background:var(--down);color:#fff;animation:blink 1s infinite alternate}
+@keyframes blink{to{opacity:.55}}
+.empty{color:var(--muted);padding:8px 0}
+
+.actions{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+button,.btn{font:inherit;font-weight:600;border:0;border-radius:10px;padding:12px 20px;cursor:pointer;text-decoration:none;display:inline-block}
+.btn-primary{background:#2563eb;color:#fff}.btn-primary:hover{background:#1d4ed8}
+.btn-ghost{background:#e2e8f0;color:var(--text)}.btn-ghost:hover{background:#cbd5e1}
+.path{font-size:13px;color:var(--muted);word-break:break-all}
+details summary{cursor:pointer;font-weight:600}
+table{border-collapse:collapse;margin-top:10px;font-size:14px}
+td{padding:4px 16px 4px 0}td:first-child{color:var(--muted)}
+.stopped{position:fixed;inset:0;background:rgba(15,23,42,.6);display:none;place-items:center;padding:16px}
+.stopped div{background:#fff;border-radius:16px;padding:28px;max-width:440px;text-align:center}
+
+@media (max-width:720px){
+  .kpis{grid-template-columns:repeat(2,1fr)}
+  .chain{grid-template-columns:1fr;justify-items:center}
+  .link{padding:4px 0;width:100%;display:grid;grid-template-columns:40px 1fr;align-items:center;text-align:left;gap:10px}
+  .link .bar{width:8px;height:44px;margin:0 auto;background:var(--na)}
+  .link.ok .bar{background:var(--ok)}
+  .link.warn .bar,.link.down .bar,.link.unknown .bar{background:repeating-linear-gradient(180deg,currentColor 0 10px,transparent 10px 18px)}
+  .link.warn .bar{color:var(--warn)}.link.down .bar{color:var(--down)}.link.unknown .bar{color:var(--unknown)}
+  .link .lbl{margin-top:0}
+  .tl-row{grid-template-columns:1fr}.tl-axis{margin-left:0}
+  .status{flex-direction:column;gap:8px}
+}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>🌐 Test Internet</h1>
+    <div class="live"><span class="dot"></span><span id="elapsed">Démarrage…</span></div>
+  </header>
+
+  <div id="demo" class="demo" hidden>Mode démonstration : les coupures affichées sont simulées.</div>
+
+  <section id="status" class="card status l0">
+    <div class="icon" id="st-icon">⏳</div>
+    <div>
+      <h2 id="st-title">Premier test en cours…</h2>
+      <div id="st-expl"></div>
+      <div class="detail" id="st-detail"></div>
+      <div class="advice" id="st-advice" hidden></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Le chemin de votre connexion</h2>
+    <div class="muted">Pour aller sur Internet, votre ordinateur passe par votre box. Chaque trait est une liaison : s'il devient rouge, la communication est coupée à cet endroit.</div>
+    <div class="chain" id="chain"></div>
+  </section>
+
+  <section class="kpis">
+    <div class="kpi"><div class="k">Coupures</div><div class="v" id="k-out">0</div><div class="s" id="k-warn"></div></div>
+    <div class="kpi"><div class="k">Temps sans Internet</div><div class="v" id="k-time">0 s</div></div>
+    <div class="kpi"><div class="k">Disponibilité</div><div class="v" id="k-av">—</div><div class="s">du temps avec Internet</div></div>
+    <div class="kpi"><div class="k">Temps de réponse</div><div class="v" id="k-speed">—</div><div class="s" id="k-ms"></div></div>
+  </section>
+
+  <section class="card" style="margin-top:16px">
+    <h2>La dernière heure, liaison par liaison</h2>
+    <div class="muted">Chaque petite case représente une minute. Une case rouge = coupure pendant cette minute.</div>
+    <div id="timelines"></div>
+    <div class="tl-axis"><span>il y a 60 min</span><span>il y a 30 min</span><span>maintenant</span></div>
+    <div class="legend">
+      <span><i style="background:var(--ok)"></i>Fonctionne</span>
+      <span><i style="background:#f59e0b"></i>Lent ou instable</span>
+      <span><i style="background:var(--down)"></i>Coupé</span>
+      <span><i style="background:var(--unknown)"></i>Coupé, sans savoir laquelle des deux liaisons</span>
+      <span><i style="background:#e2e8f0"></i>Pas testé</span>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Journal des problèmes</h2>
+    <div class="muted">Chaque coupure ou ralentissement est noté avec l'heure, la durée et ce qu'il faut en penser.</div>
+    <div id="incidents"></div>
+  </section>
+
+  <section class="card">
+    <div class="actions">
+      <a class="btn btn-primary" href="/rapport" target="_blank">📄 Voir le rapport</a>
+      <button class="btn-ghost" id="quit">⏹ Arrêter le test</button>
+    </div>
+    <p class="muted" style="margin:12px 0 0">Laissez tourner le test au moins quelques heures (idéalement une journée) pendant que vous utilisez l'ordinateur normalement. Le rapport peut être envoyé à votre opérateur ou à la personne qui vous aide.</p>
+    <p class="path" id="path"></p>
+  </section>
+
+  <section class="card">
+    <details>
+      <summary>Détails techniques (pour un informaticien)</summary>
+      <table id="tech"></table>
+    </details>
+  </section>
+</main>
+
+<div class="stopped" id="stopped"><div>
+  <div style="font-size:44px">✋</div>
+  <h2>Le test est arrêté</h2>
+  <p class="muted" id="stopped-msg">Vous pouvez fermer cette page. Le rapport a été enregistré.</p>
+</div></div>
+
+<script>
+const NODES = [
+  {id:"pc", icon:"💻", name:"Votre ordinateur"},
+  {id:"box", icon:"📡", name:"Votre box"},
+  {id:"internet", icon:"🌍", name:"Internet"},
+  {id:"web", icon:"📰", name:"Les sites web"},
+];
+const NODE_STATE = {ok:"Répond", warn:"Lent", down:"Ne répond pas", unknown:"—"};
+const LINK_LABEL = {ok:"✔ Communication OK", warn:"⚠ Lente / instable", down:"✖ Communication coupée", unknown:"✖ Coupée ici ou juste après", na:"Non testable"};
+const ICON = ["✅","⚠️","❌"];
+const TAB = ["🟢","🟠","🔴"];
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function renderChain(d){
+  let h = "";
+  NODES.forEach((n, i) => {
+    const st = d.nodes[n.id] || "unknown";
+    h += `<div class="node ${st}"><div class="circle">${n.icon}</div><div class="name">${n.name}</div><div class="state">${NODE_STATE[st]}</div></div>`;
+    if (i < d.links.length) {
+      const l = d.links[i];
+      const sub = l.cuts ? `${l.cuts} coupure${l.cuts>1?"s":""} (${l.cutTime})` : (l.warnings ? `${l.warnings} ralentissement${l.warnings>1?"s":""}` : "aucune coupure");
+      h += `<div class="link ${l.state}" title="${esc(l.name)}"><div class="bar"><span class="cut">✂️</span></div><div><div class="lbl">${LINK_LABEL[l.state]}</div><div class="sub">${sub}</div></div></div>`;
+    }
+  });
+  $("chain").innerHTML = h;
+}
+
+function tlRow(label, values){
+  return `<div class="tl-row"><div class="lab">${esc(label)}</div><div class="tl">${values.map(v => `<i class="${v<0?"":"l"+v}"></i>`).join("")}</div></div>`;
+}
+
+function render(d){
+  document.title = `${TAB[d.level]} Test Internet`;
+  $("demo").hidden = !d.demo;
+  $("elapsed").textContent = `Surveillance en cours depuis ${d.elapsed}`;
+  const st = $("status");
+  st.className = `card status l${d.cause === "starting" ? 0 : d.level}`;
+  $("st-icon").textContent = d.cause === "starting" ? "⏳" : ICON[d.level];
+  $("st-title").textContent = d.title;
+  $("st-expl").textContent = d.explanation;
+  $("st-detail").textContent = d.detail ? `Mesure : ${d.detail}` : "";
+  $("st-advice").hidden = !d.advice;
+  $("st-advice").innerHTML = `👉 <b>Que faire ?</b> ${esc(d.advice)}`;
+
+  renderChain(d);
+
+  $("k-out").textContent = d.outages;
+  $("k-warn").textContent = d.warnings ? `+ ${d.warnings} ralentissement${d.warnings>1?"s":""}` : "";
+  $("k-time").textContent = d.outageTime;
+  $("k-av").textContent = d.availability < 0 ? "—" : (d.availability >= 99.95 ? "100 %" : d.availability.toFixed(1).replace(".", ",") + " %");
+  $("k-speed").textContent = d.speed;
+  $("k-ms").textContent = d.latencyMs >= 0 ? `${Math.round(d.latencyMs)} ms` : "";
+
+  $("timelines").innerHTML = tlRow("Connexion globale", d.timeline) + d.links.map(l => tlRow(l.name, l.timeline)).join("");
+
+  $("incidents").innerHTML = d.incidents.length ? d.incidents.map(i => `
+    <div class="inc">
+      <div class="ico">${i.level === 2 ? "❌" : "⚠️"}</div>
+      <div>
+        <div class="when">${i.ongoing ? `Depuis ${i.start}` : `${i.start} → ${i.end}`} · <b>${i.duration}</b>${i.ongoing ? '<span class="badge on">EN COURS</span>' : ""}</div>
+        <div class="t">${esc(i.title)}${i.detail ? ` <span class="muted">(${esc(i.detail)})</span>` : ""}</div>
+        <div class="x">${esc(i.explanation)}</div>
+        ${i.advice ? `<div class="a">👉 ${esc(i.advice)}</div>` : ""}
+      </div>
+    </div>`).join("") : `<div class="empty">Aucun problème pour l'instant. 👍</div>`;
+
+  $("path").textContent = d.reportPath ? `Le rapport est aussi enregistré automatiquement (chaque minute) ici : ${d.reportPath}` : "";
+  $("tech").innerHTML = Object.entries(d.tech).map(([k, v]) => `<tr><td>${esc(k)}</td><td>${esc(v)}</td></tr>`).join("");
+}
+
+let failures = 0, stopped = false;
+async function tick(){
+  if (stopped) return;
+  try {
+    const r = await fetch("/api/status", {cache:"no-store"});
+    render(await r.json());
+    failures = 0;
+  } catch (e) {
+    if (++failures >= 3) {
+      $("stopped-msg").textContent = "Le programme de test ne répond plus (la fenêtre noire a peut-être été fermée). Relancez TestInternet.exe pour reprendre.";
+      $("stopped").style.display = "grid";
+    }
+  }
+  setTimeout(tick, 2000);
+}
+
+$("quit").onclick = async () => {
+  if (!confirm("Arrêter le test ? Le rapport sera enregistré.")) return;
+  stopped = true;
+  try { await fetch("/api/quit", {method:"POST"}); } catch (e) {}
+  $("stopped").style.display = "grid";
+};
+
+tick();
+</script>
+</body>
+</html>

@@ -1,0 +1,26 @@
+name: Test Internet
+
+on:
+  push:
+    paths: ["test-internet/**", ".github/workflows/test-internet.yml"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: test-internet
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: test-internet/go.mod
+      - run: go vet ./... && GOOS=windows go vet ./...
+      - run: go test ./...
+      - name: Compiler TestInternet.exe
+        run: GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o TestInternet.exe .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TestInternet
+          path: test-internet/TestInternet.exe
