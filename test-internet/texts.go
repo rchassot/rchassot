@@ -71,6 +71,12 @@ var causeTexts = map[string]CauseText{
 		Advice:      "En Wi-Fi, rapprochez-vous de la box. Si cela arrive aussi avec un câble, parlez-en à votre opérateur.",
 		Where:       "connexion instable",
 	},
+	"device": {
+		Title:       "Communication coupée avec un appareil du réseau",
+		Explanation: "Cet ordinateur n'arrive plus à joindre cet appareil. Il est peut-être éteint ou en veille, ou la liaison (Wi-Fi, câble, switch) entre les deux a coupé.",
+		Advice:      "Vérifiez que l'appareil est allumé et ne s'est pas mis en veille. Si la coupure a lieu en même temps qu'une coupure « Ordinateur ↔ Box », c'est la connexion de cet ordinateur qui est en cause.",
+		Where:       "réseau local",
+	},
 	"slow": {
 		Title:       "La connexion est lente",
 		Explanation: "Internet met beaucoup de temps à répondre. Les pages s'ouvrent lentement et les appels vidéo peuvent saccader.",

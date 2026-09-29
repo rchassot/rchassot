@@ -83,6 +83,25 @@ h2{font-size:18px;margin:0 0 4px}
 @keyframes blink{to{opacity:.55}}
 .empty{color:var(--muted);padding:8px 0}
 
+/* Appareils du réseau */
+.dev{padding:12px 0;border-top:1px solid var(--line)}
+.dev:first-child{border-top:0}
+.dev-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+.dev-dot{width:12px;height:12px;border-radius:50%;background:var(--na);flex:none}
+.dev-dot.ok{background:var(--ok)}.dev-dot.down{background:var(--down)}.dev-dot.never{background:#f59e0b}
+.dev-state{font-size:14px;font-weight:600}
+.dev-state.ok{color:var(--ok)}.dev-state.down{color:var(--down)}.dev-state.never{color:var(--warn)}.dev-state.na,.dev-state.wait{color:var(--muted)}
+.dev-cuts{font-size:13px;color:var(--muted);margin-left:auto}
+.x{background:none;border:0;color:var(--muted);font-size:18px;padding:2px 8px;border-radius:6px;cursor:pointer}
+.x:hover{background:var(--down-bg);color:var(--down)}
+.add{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.add input{font:inherit;padding:10px 12px;border:1px solid #cbd5e1;border-radius:10px;flex:1 1 200px;min-width:0}
+.err{color:var(--down);font-size:14px;margin-top:6px}
+.box-note{margin-top:16px;padding:14px 16px;background:#f8fafc;border:1px solid var(--line);border-radius:12px;font-size:15px}
+.box-note p{margin:6px 0}
+.help{margin-top:12px;font-size:14px}.help ul{margin:6px 0;padding-left:20px}
+label.chk{display:flex;gap:8px;align-items:center;font-weight:600;cursor:pointer}
+label.chk input{width:18px;height:18px}
 .actions{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
 button,.btn{font:inherit;font-weight:600;border:0;border-radius:10px;padding:12px 20px;cursor:pointer;text-decoration:none;display:inline-block}
 .btn-primary{background:#2563eb;color:#fff}.btn-primary:hover{background:#1d4ed8}
@@ -155,6 +174,33 @@ td{padding:4px 16px 4px 0}td:first-child{color:var(--muted)}
   </section>
 
   <section class="card">
+    <h2>Vos appareils sur le réseau</h2>
+    <div class="muted">Ajoutez une imprimante, un NAS, un autre ordinateur, une caméra… Le test vérifie en continu que la communication entre <b>cet ordinateur</b> et chaque appareil ne coupe pas.</div>
+    <div id="devices"></div>
+    <form id="add-dev" class="add" autocomplete="off">
+      <input id="dev-name" placeholder="Nom (ex : Imprimante du bureau)" maxlength="60">
+      <input id="dev-addr" placeholder="Adresse (ex : 192.168.1.20)" maxlength="253">
+      <button class="btn-primary" type="submit">+ Ajouter</button>
+    </form>
+    <div id="dev-err" class="err"></div>
+    <details class="help">
+      <summary>Où trouver l'adresse d'un appareil ?</summary>
+      <ul>
+        <li><b>Dans votre box</b> : sa page de réglages liste les « appareils connectés » avec leur adresse (souvent 192.168.x.x).</li>
+        <li><b>Imprimante</b> : dans son menu Réseau / Wi-Fi, ou en imprimant la « page de configuration réseau ».</li>
+        <li><b>Autre ordinateur Windows</b> : son nom (ex : PC-SALON) fonctionne souvent. Sinon, lancez Test Internet dessus : son adresse s'affiche dans l'encadré ci-dessous.</li>
+      </ul>
+    </details>
+    <div class="box-note">
+      <b>🖥️ ↔ 🖥️ Tester entre deux ordinateurs</b>
+      <p>L'adresse de cet ordinateur est <b id="my-ip">—</b>. Lancez Test Internet sur l'autre ordinateur et ajoutez-y cette adresse (et inversement).</p>
+      <p class="muted">Windows bloque souvent les tests qui viennent d'un autre ordinateur. Cochez la case ci-dessous <b>sur les deux ordinateurs</b>, puis cliquez sur <b>Autoriser</b> si le pare-feu Windows le demande.</p>
+      <label class="chk"><input type="checkbox" id="resp"> Permettre aux autres ordinateurs de tester celui-ci</label>
+      <div id="resp-err" class="err"></div>
+    </div>
+  </section>
+
+  <section class="card">
     <h2>Journal des problèmes</h2>
     <div class="muted">Chaque coupure ou ralentissement est noté avec l'heure, la durée et ce qu'il faut en penser.</div>
     <div id="incidents"></div>
@@ -163,6 +209,7 @@ td{padding:4px 16px 4px 0}td:first-child{color:var(--muted)}
   <section class="card">
     <div class="actions">
       <a class="btn btn-primary" href="/rapport" target="_blank">📄 Voir le rapport</a>
+      <button class="btn-ghost" id="folder">📁 Ouvrir le dossier du rapport</button>
       <button class="btn-ghost" id="quit">⏹ Arrêter le test</button>
     </div>
     <p class="muted" style="margin:12px 0 0">Laissez tourner le test au moins quelques heures (idéalement une journée) pendant que vous utilisez l'ordinateur normalement. Le rapport peut être envoyé à votre opérateur ou à la personne qui vous aide.</p>
@@ -215,6 +262,31 @@ function tlRow(label, values){
   return `<div class="tl-row"><div class="lab">${esc(label)}</div><div class="tl">${values.map(v => `<i class="${v<0?"":"l"+v}"></i>`).join("")}</div></div>`;
 }
 
+const DEV_STATE = {
+  ok: d => `✔ Communication OK${d.ms >= 0 ? ` (${d.ms < 1 ? "< 1" : Math.round(d.ms)} ms)` : ""}`,
+  down: () => "✖ Communication coupée",
+  never: () => "⚠ N'a jamais répondu : vérifiez l'adresse et que l'appareil est allumé",
+  na: () => "Non testable (cet ordinateur n'est relié à aucun réseau)",
+  wait: () => "Test en cours…",
+};
+
+function renderDevices(d){
+  $("devices").innerHTML = d.devices.length ? d.devices.map(v => `
+    <div class="dev">
+      <div class="dev-head">
+        <span class="dev-dot ${v.state}"></span>
+        <b>Ordinateur ↔ ${esc(v.name)}</b><span class="muted">${esc(v.addr)}</span>
+        <span class="dev-state ${v.state}">${DEV_STATE[v.state](v)}</span>
+        <span class="dev-cuts">${v.cuts ? `${v.cuts} coupure${v.cuts>1?"s":""} (${v.cutTime}), dernière à ${v.lastCut}` : "aucune coupure"}</span>
+        <button class="x" title="Retirer cet appareil" data-del="${esc(v.id)}">✕</button>
+      </div>
+      <div class="tl">${v.timeline.map(x => `<i class="${x<0?"":"l"+x}"></i>`).join("")}</div>
+    </div>`).join("") : `<div class="empty">Aucun appareil pour l'instant.</div>`;
+  $("my-ip").textContent = d.localIP || "inconnue";
+  if (document.activeElement !== $("resp")) $("resp").checked = d.responder;
+  $("resp-err").textContent = d.responderErr || "";
+}
+
 function render(d){
   document.title = `${TAB[d.level]} Test Internet`;
   $("demo").hidden = !d.demo;
@@ -229,6 +301,7 @@ function render(d){
   $("st-advice").innerHTML = `👉 <b>Que faire ?</b> ${esc(d.advice)}`;
 
   renderChain(d);
+  renderDevices(d);
 
   $("k-out").textContent = d.outages;
   $("k-warn").textContent = d.warnings ? `+ ${d.warnings} ralentissement${d.warnings>1?"s":""}` : "";
@@ -269,6 +342,42 @@ async function tick(){
   }
   setTimeout(tick, 2000);
 }
+
+async function api(method, url, body){
+  const r = await fetch(url, {method, headers:{"Content-Type":"application/json"}, body: body && JSON.stringify(body)});
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || "Erreur");
+  return j;
+}
+
+$("add-dev").onsubmit = async e => {
+  e.preventDefault();
+  $("dev-err").textContent = "";
+  try {
+    await api("POST", "/api/devices", {name: $("dev-name").value, addr: $("dev-addr").value});
+    $("dev-name").value = $("dev-addr").value = "";
+  } catch (err) { $("dev-err").textContent = err.message; }
+};
+
+$("devices").onclick = async e => {
+  const id = e.target.dataset.del;
+  if (id && confirm("Retirer cet appareil de la surveillance ?")) {
+    try { await api("DELETE", "/api/devices/" + encodeURIComponent(id)); } catch (err) {}
+  }
+};
+
+$("resp").onchange = async () => {
+  try {
+    const r = await api("POST", "/api/responder", {on: $("resp").checked});
+    $("resp").checked = r.on;
+    $("resp-err").textContent = r.error || "";
+  } catch (err) { $("resp-err").textContent = err.message; }
+  $("resp").blur();
+};
+
+$("folder").onclick = async () => {
+  try { await api("POST", "/api/open-folder"); } catch (err) { alert("Impossible d'ouvrir le dossier : " + err.message); }
+};
 
 $("quit").onclick = async () => {
   if (!confirm("Arrêter le test ? Le rapport sera enregistré.")) return;

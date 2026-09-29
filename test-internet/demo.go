@@ -12,7 +12,7 @@ type demoProber struct{ start time.Time }
 
 func newDemoProber() *demoProber { return &demoProber{start: time.Now()} }
 
-func (p *demoProber) Probe(context.Context) Round {
+func (p *demoProber) Probe(_ context.Context, devices []Device) Round {
 	now := time.Now()
 	sec := int(now.Sub(p.start).Seconds()) % 150
 	ok := Check{OK: true, Ms: 12 + rand.Float64()*8}
@@ -24,6 +24,11 @@ func (p *demoProber) Probe(context.Context) Round {
 	}
 	for _, a := range netTargets {
 		r.Targets = append(r.Targets, Target{Addr: a, Check: ok})
+	}
+	r.Devices = map[string]Check{}
+	for i, d := range devices {
+		// Le deuxième appareil perd la communication entre 60 et 75 s.
+		r.Devices[d.ID] = Check{OK: !(i == 1 && sec >= 60 && sec < 75), Ms: 2 + rand.Float64()*3}
 	}
 	down := func() {
 		r.Net = Check{Ms: -1}
@@ -42,6 +47,9 @@ func (p *demoProber) Probe(context.Context) Round {
 		}
 	case sec >= 90 && sec < 98: // Wi-Fi trop faible
 		down()
+		for id := range r.Devices {
+			r.Devices[id] = Check{}
+		}
 		r.Box = Check{}
 		r.Wifi.Signal = 22
 	case sec >= 120 && sec < 128: // DNS en panne

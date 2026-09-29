@@ -53,6 +53,14 @@ func newReporter(m *Monitor, dir string) *reporter {
 
 func (r *reporter) Path() string { return r.path }
 
+// Dir est le dossier des rapports ("" si aucun n'est accessible).
+func (r *reporter) Dir() string {
+	if r.path == "" {
+		return ""
+	}
+	return filepath.Dir(r.path)
+}
+
 func (r *reporter) Save() (string, error) {
 	if r.path == "" {
 		return "", fmt.Errorf("aucun dossier accessible en écriture")
@@ -77,6 +85,16 @@ func (r *reporter) AutoSave(ctx context.Context, every time.Duration) {
 
 type reportIncident struct {
 	Start, End, Duration, Title, Link, Detail, Class string
+	t                                                time.Time
+}
+
+type reportDevice struct {
+	Name, Addr, State, Class, CutTime, LastCut string
+	Cuts                                       int
+}
+
+var deviceStateText = map[string]string{
+	"ok": "Joignable", "down": "Injoignable", "never": "N'a jamais répondu", "na": "Non testable", "wait": "—",
 }
 
 type reportLink struct {
@@ -91,6 +109,7 @@ type reportData struct {
 	Outages, Warnings                    int
 	OutageTime                           string
 	Links                                []reportLink
+	Devices                              []reportDevice
 	Incidents                            []reportIncident
 	Chart                                template.HTML
 	Gateway, Targets                     string
@@ -156,9 +175,32 @@ func buildReport(s Snapshot) []byte {
 		}
 		d.Incidents = append(d.Incidents, reportIncident{
 			Start: in.Start.Format("02.01 15:04:05"), End: endTxt, Duration: fmtDuration(end.Sub(in.Start)),
-			Title: causeText(in.Cause).Title, Link: strings.Join(names, " ou "), Detail: in.Detail, Class: class,
+			Title: causeText(in.Cause).Title, Link: strings.Join(names, " ou "), Detail: in.Detail, Class: class, t: in.Start,
 		})
 	}
+	for _, dv := range s.Devices {
+		st := dv.Stats(s.Now)
+		rd := reportDevice{Name: dv.Name, Addr: dv.Addr, State: deviceStateText[dv.State()], Class: dv.State(), Cuts: st.Cuts, CutTime: "—", LastCut: "—"}
+		if rd.Class == "never" {
+			rd.Class = "warn"
+		}
+		if st.Cuts > 0 {
+			rd.CutTime, rd.LastCut = fmtDuration(st.CutTime), st.LastCut.Start.Format("02.01 15:04:05")
+		}
+		d.Devices = append(d.Devices, rd)
+		for _, in := range dv.Incidents {
+			end, endTxt := in.End, in.End.Format("02.01 15:04:05")
+			if in.Ongoing {
+				end, endTxt = s.Now, "en cours"
+			}
+			d.Incidents = append(d.Incidents, reportIncident{
+				Start: in.Start.Format("02.01 15:04:05"), End: endTxt, Duration: fmtDuration(end.Sub(in.Start)),
+				Title: "Communication coupée avec « " + dv.Name + " »", Link: "Ordinateur ↔ " + dv.Name,
+				Detail: dv.Addr, Class: "down", t: in.Start,
+			})
+		}
+	}
+	sort.SliceStable(d.Incidents, func(i, j int) bool { return d.Incidents[i].t.Before(d.Incidents[j].t) })
 	var b bytes.Buffer
 	if err := reportTmpl.Execute(&b, d); err != nil {
 		return []byte("erreur de génération du rapport : " + err.Error())
@@ -316,6 +358,12 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;p
 <table><tr><th>Liaison</th><th>État à la fin</th><th>Coupures</th><th>Temps coupé</th><th>Lenteurs</th><th>Dernière coupure</th></tr>
 {{range .Links}}<tr><td><b>{{.Name}}</b></td><td><span class="pill {{.Class}}">{{.State}}</span></td><td>{{.Cuts}}</td><td>{{.CutTime}}</td><td>{{.Warnings}}</td><td>{{.LastCut}}</td></tr>{{end}}
 </table>
+
+{{if .Devices}}<h2>Appareils du réseau</h2>
+<p class="muted">Communication entre cet ordinateur et les appareils surveillés.</p>
+<table><tr><th>Appareil</th><th>Adresse</th><th>État à la fin</th><th>Coupures</th><th>Temps coupé</th><th>Dernière coupure</th></tr>
+{{range .Devices}}<tr><td><b>{{.Name}}</b></td><td>{{.Addr}}</td><td><span class="pill {{.Class}}">{{.State}}</span></td><td>{{.Cuts}}</td><td>{{.CutTime}}</td><td>{{.LastCut}}</td></tr>{{end}}
+</table>{{end}}
 
 <h2>Temps de réponse d'Internet</h2>
 {{.Chart}}

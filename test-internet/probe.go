@@ -57,7 +57,7 @@ func newRealProber() *realProber {
 	}
 }
 
-func (p *realProber) Probe(ctx context.Context) Round {
+func (p *realProber) Probe(ctx context.Context, devices []Device) Round {
 	r := Round{Time: time.Now(), Gateway: defaultGateway()}
 	if p.n%3 == 0 {
 		p.wifi = wifiInfo()
@@ -86,7 +86,15 @@ func (p *realProber) Probe(ctx context.Context) Round {
 	}
 	run(func() { r.DNS = p.checkDNS(ctx) })
 	run(func() { r.Web = p.checkWeb(ctx) })
+	devRes := make([]Check, len(devices))
+	for i, d := range devices {
+		run(func() { devRes[i] = probeDevice(ctx, d.Addr) })
+	}
 	wg.Wait()
+	r.Devices = make(map[string]Check, len(devices))
+	for i, d := range devices {
+		r.Devices[d.ID] = devRes[i]
+	}
 
 	pings := make([]Check, len(r.Targets))
 	for i, t := range r.Targets {

@@ -53,6 +53,19 @@ func main() {
 	}
 	mon := NewMonitor(prober, interval)
 	rep := newReporter(mon, *outDir)
+	a := &app{mon: mon, rep: rep, store: newSettingsStore(rep.Dir()), resp: &responder{}, demo: *demo}
+	if *demo {
+		mon.AddDevice(Device{ID: newDeviceID(), Name: "NAS", Addr: "192.168.1.10"})
+		mon.AddDevice(Device{ID: newDeviceID(), Name: "Imprimante du bureau", Addr: "192.168.1.20"})
+	} else {
+		st := a.store.Load()
+		for _, d := range st.Devices {
+			mon.AddDevice(d)
+		}
+		if st.Responder {
+			a.resp.Set(true)
+		}
+	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	go mon.Run(ctx)
@@ -60,9 +73,9 @@ func main() {
 
 	var once sync.Once
 	done := make(chan struct{})
-	quit := func() { once.Do(func() { close(done) }) }
+	a.quit = func() { once.Do(func() { close(done) }) }
 	go func() {
-		if err := http.Serve(ln, newHandler(mon, rep, *demo, quit)); err != nil {
+		if err := http.Serve(ln, newHandler(a)); err != nil {
 			fail("Erreur du serveur : %v", err)
 		}
 	}()

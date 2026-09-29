@@ -94,3 +94,8 @@ func hiddenCmd(name string, args ...string) *exec.Cmd {
 	c.SysProcAttr = &syscall.SysProcAttr{HideWindow: true, CreationFlags: 0x08000000} // CREATE_NO_WINDOW
 	return c
 }
+
+// openFolder ouvre l'Explorateur Windows avec le fichier sélectionné.
+func openFolder(path string) {
+	_ = exec.Command("explorer", "/select,", path).Start()
+}

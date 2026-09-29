@@ -16,7 +16,24 @@ Petit utilitaire Windows qui surveille la connexion Internet en continu et **exp
 3. Laissez tourner quelques heures (idéalement une journée) en utilisant l'ordinateur normalement.
 4. Cliquez sur **Voir le rapport** pour obtenir un rapport à envoyer à votre opérateur. Pour en faire un PDF : Ctrl + P, puis « Enregistrer au format PDF ».
 
-Le rapport est aussi enregistré automatiquement chaque minute dans le dossier `Rapports Test Internet`, à côté de l'exe. Si ce dossier n'est pas accessible, il est enregistré dans `Documents\Rapports Test Internet`.
+### Où est enregistré le rapport ?
+
+Le rapport est enregistré automatiquement chaque minute, puis une dernière fois à l'arrêt, dans un dossier **`Rapports Test Internet` créé à côté de l'exe**. Par exemple, si l'exe est dans Téléchargements : `Téléchargements\Rapports Test Internet\rapport-internet_2026-09-29_14h02.html`.
+
+- Si ce dossier n'est pas accessible en écriture, le rapport va dans `Documents\Rapports Test Internet`.
+- Le chemin exact s'affiche en bas de la page, et le bouton **📁 Ouvrir le dossier du rapport** l'ouvre directement dans l'Explorateur.
+- Chaque lancement crée un nouveau fichier : l'heure de démarrage est dans le nom.
+- Le fichier `parametres.json`, dans le même dossier, garde la liste des appareils surveillés.
+
+## Tester la communication avec d'autres appareils du réseau
+
+Dans la section **Vos appareils sur le réseau**, ajoutez une imprimante, un NAS, une caméra ou un autre ordinateur (nom + adresse IP ou nom réseau). Le programme vérifie toutes les 5 secondes que la communication entre **cet ordinateur** et chaque appareil passe. Pour chaque appareil, il affiche son état, ses coupures et une frise de la dernière heure. Les coupures apparaissent aussi dans le journal et dans le rapport.
+
+- Le test se fait par ping, et en parallèle sur des ports courants (partage Windows, web, imprimante, SSH, bureau à distance…). Un appareil qui bloque le ping est donc quand même détecté.
+- Un appareil qui n'a **jamais** répondu n'est pas compté comme coupé : l'adresse est peut-être fausse. La page le signale.
+- Si cet ordinateur perd lui-même le réseau, les appareils sont marqués « non testable » plutôt que coupés.
+
+**Entre deux ordinateurs Windows** : lancez Test Internet sur les deux, et ajoutez sur chacun l'adresse de l'autre (elle s'affiche dans l'encadré « Tester entre deux ordinateurs »). Windows bloque par défaut les tests venant d'un autre PC. Cochez donc **« Permettre aux autres ordinateurs de tester celui-ci »** sur les deux, et acceptez le message du pare-feu Windows. Le programme répond alors sur le port TCP 47801 : il accepte la connexion et la ferme aussitôt, sans échanger aucune donnée.
 
 ## Ce qu'affiche la page
 
@@ -69,6 +86,8 @@ La page est servie sur `http://127.0.0.1:47800`. Si on relance l'exe alors qu'il
 | `main.go` | démarrage, console, ouverture du navigateur |
 | `probe.go` | les tests réseau |
 | `monitor.go` | diagnostic, incidents, liaisons, statistiques |
+| `device.go` | appareils du réseau local : test et suivi |
+| `settings.go` | paramètres enregistrés, mode « répondeur » (port 47801) |
 | `texts.go` | tous les textes affichés à l'utilisateur |
 | `server.go` | API locale pour la page |
 | `report.go` | rapport HTML (avec graphique) |

@@ -14,6 +14,7 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"syscall"
@@ -59,4 +60,12 @@ func openBrowser(url string) {
 		cmd = "open"
 	}
 	_ = exec.Command(cmd, url).Start()
+}
+
+func openFolder(path string) {
+	cmd := "xdg-open"
+	if runtime.GOOS == "darwin" {
+		cmd = "open"
+	}
+	_ = exec.Command(cmd, filepath.Dir(path)).Start()
 }

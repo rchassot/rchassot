@@ -53,6 +53,7 @@ type Round struct {
 	DNS     Check    // l'annuaire d'Internet répond
 	Web     Check    // une page web se charge
 	Wifi    *WifiInfo
+	Devices map[string]Check // résultat par appareil surveillé (clé : Device.ID)
 }
 
 // Sample est ce qu'on garde de chaque tour pour l'historique et le graphique.
@@ -76,7 +77,7 @@ func (i Incident) Duration() time.Duration { return i.End.Sub(i.Start) }
 
 // Prober effectue un tour de tests.
 type Prober interface {
-	Probe(ctx context.Context) Round
+	Probe(ctx context.Context, devices []Device) Round
 }
 
 // Monitor lance les tests à intervalle régulier et en tire un diagnostic.
@@ -100,6 +101,7 @@ type Monitor struct {
 	lossHist  []float64
 	msHist    []float64
 	webFails  int
+	devices   []*deviceTrack
 }
 
 func NewMonitor(p Prober, interval time.Duration) *Monitor {
@@ -117,7 +119,7 @@ func (m *Monitor) Run(ctx context.Context) {
 	t := time.NewTicker(m.interval)
 	defer t.Stop()
 	for {
-		m.Step(m.prober.Probe(ctx))
+		m.Step(m.prober.Probe(ctx, m.Devices()))
 		select {
 		case <-ctx.Done():
 			return
@@ -184,12 +186,20 @@ func (m *Monitor) Step(r Round) {
 		m.samples = append(m.samples[:0:0], m.samples[len(m.samples)-maxSamples:]...)
 	}
 	m.record(r.Time, level, cause, detail)
+	m.stepDevices(r)
 }
 
 func (m *Monitor) record(t time.Time, level Level, cause, detail string) {
+	recordIncident(&m.incidents, t, level, cause, detail)
+}
+
+// recordIncident met à jour un journal : prolonge l'incident en cours, le
+// clôt, ou en ouvre un nouveau (en fusionnant avec un incident identique récent).
+func recordIncident(list *[]*Incident, t time.Time, level Level, cause, detail string) {
+	incidents := *list
 	var cur *Incident
-	if n := len(m.incidents); n > 0 && m.incidents[n-1].Ongoing {
-		cur = m.incidents[n-1]
+	if n := len(incidents); n > 0 && incidents[n-1].Ongoing {
+		cur = incidents[n-1]
 	}
 	if level == LevelOK {
 		if cur != nil {
@@ -204,14 +214,14 @@ func (m *Monitor) record(t time.Time, level Level, cause, detail string) {
 	if cur != nil {
 		cur.End, cur.Ongoing = t, false
 	}
-	if n := len(m.incidents); n > 0 {
-		prev := m.incidents[n-1]
+	if n := len(incidents); n > 0 {
+		prev := incidents[n-1]
 		if prev.Cause == cause && t.Sub(prev.End) <= mergeGap {
 			prev.End, prev.Ongoing, prev.Detail = t, true, detail
 			return
 		}
 	}
-	m.incidents = append(m.incidents, &Incident{Start: t, End: t, Ongoing: true, Level: level, Cause: cause, Detail: detail})
+	*list = append(incidents, &Incident{Start: t, End: t, Ongoing: true, Level: level, Cause: cause, Detail: detail})
 }
 
 type diagInput struct {
@@ -273,6 +283,7 @@ type Snapshot struct {
 	BoxEverOK bool
 	Samples   []Sample
 	Incidents []Incident
+	Devices   []DeviceSnapshot
 }
 
 func (m *Monitor) Snapshot() Snapshot {
@@ -288,6 +299,7 @@ func (m *Monitor) Snapshot() Snapshot {
 	for _, i := range m.incidents {
 		s.Incidents = append(s.Incidents, *i)
 	}
+	s.Devices = m.snapshotDevices()
 	return s
 }
 
